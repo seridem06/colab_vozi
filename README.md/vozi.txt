@@ -1,0 +1,64 @@
+
+## Instalación y Configuración
+
+### Requisitos
+- Navegador web moderno con soporte para:
+  - Web Speech API
+  - Audio HTML5
+  - ES6+ JavaScript
+
+### Configuración
+1. Clona o descarga el proyecto
+2. Coloca los archivos de audio en las carpetas correspondientes:
+   - `assets/audios/nivel_001/` - Palabras nivel básico (.m4a)
+   - `assets/audios/nivel_002/` - Palabras nivel avanzado (.m4a)
+   - `assets/audios/pronuncia_bien/` - Audios de feedback (.m4a)
+
+3. Abre `index.html` en un navegador web
+
+### Uso
+1. **Inicio**: Lee las instrucciones y haz clic en "Comenzar Juego"
+2. **Juego**:
+   - Escucha la palabra que se reproduce
+   - Haz clic en "HABLAR" y pronuncia la palabra
+   - Tienes 3 oportunidades por palabra
+3. **Progreso**:
+   - Gana 3 estrellas para pasar al siguiente nivel
+   - Completa ambos niveles para ganar el juego
+
+## Características Técnicas
+
+### Tecnologías Utilizadas
+- HTML5
+- CSS3 (Grid, Flexbox, Variables CSS)
+- JavaScript ES6+
+- Web Speech API
+- HTML5 Audio API
+
+### Navegadores Compatibles
+- Chrome 25+
+- Edge 79+
+- Safari 14.1+
+- Firefox 44+ (con flags)
+
+### Estructura de Audio
+Los archivos de audio deben estar en formato M4A y nombrarse según la palabra que representan:
+- `casa.m4a`
+- `mesa.m4a`
+- etc.
+
+## Desarrollo
+
+### Personalización
+Puedes personalizar:
+- Palabras modificando los arrays en `app.js`
+- Estilos editando las variables CSS en `style.css`
+- Comportamiento del juego en la clase `VoziGame`
+
+### Agregar Nuevos Niveles
+1. Crear carpeta en `assets/audios/`
+2. Agregar archivos de audio
+3. Actualizar la lógica en `app.js`
+
+## Licencia
+Este proyecto es para fines educativos.

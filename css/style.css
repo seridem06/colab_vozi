@@ -1,0 +1,351 @@
+/* Variables CSS */
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --recognize-gradient: linear-gradient(45deg, #FF416C, #FF4B2B);
+    --replay-gradient: linear-gradient(45deg, #2196F3, #21CBF3);
+    --success-color: #4CAF50;
+    --warning-color: #FF9800;
+    --error-color: #F44336;
+    --text-light: #ffffff;
+    --text-dark: #333333;
+    --shadow: 0 8px 25px rgba(0,0,0,0.3);
+    --border-radius: 15px;
+}
+
+/* Reset y estilos base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+/* Pantallas */
+.screen {
+    width: 100%;
+    max-width: 500px;
+    transition: opacity 0.3s ease;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Pantalla de carga */
+.loading-container {
+    text-align: center;
+    background: white;
+    padding: 40px 30px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Pantalla de instrucciones */
+.instructions-container {
+    background: white;
+    padding: 30px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+
+.instructions {
+    text-align: left;
+    margin: 25px 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.instructions ul {
+    list-style: none;
+    padding: 0;
+}
+
+.instructions li {
+    padding: 8px 0;
+    font-size: 16px;
+}
+
+/* Pantalla principal del juego */
+.game-container {
+    background: var(--primary-gradient);
+    padding: 25px;
+    border-radius: var(--border-radius);
+    color: var(--text-light);
+    box-shadow: var(--shadow);
+}
+
+.game-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.game-header h2 {
+    margin: 0 0 15px 0;
+    font-size: 24px;
+}
+
+.stats {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.stat-badge {
+    background: rgba(255,255,255,0.2);
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.word-info {
+    background: rgba(255,255,255,0.1);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.word-info h3 {
+    margin: 0 0 12px 0;
+    color: #ffeb3b;
+    font-size: 16px;
+}
+
+.word-display {
+    font-size: 32px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin: 12px 0;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.opportunities {
+    color: #ffcc80;
+    font-size: 14px;
+}
+
+.progress-container {
+    background: rgba(255,255,255,0.1);
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.progress-text {
+    text-align: center;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.progress-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.progress-dot {
+    font-size: 20px;
+}
+
+.progress-dot.completed {
+    color: #4CAF50;
+}
+
+.progress-dot.current {
+    color: #FF9800;
+}
+
+.progress-dot.pending {
+    color: #9E9E9E;
+}
+
+.control-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.btn-recognize, .btn-replay, .btn-primary, .btn-secondary {
+    border: none;
+    color: white;
+    padding: 15px;
+    border-radius: 25px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.btn-recognize {
+    background: var(--recognize-gradient);
+}
+
+.btn-replay {
+    background: var(--replay-gradient);
+}
+
+.btn-primary {
+    background: var(--success-color);
+    padding: 15px 30px;
+    font-size: 18px;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    padding: 10px;
+    font-size: 14px;
+}
+
+.btn-exit {
+    background: var(--error-color);
+}
+
+.btn-recognize:hover, .btn-replay:hover, .btn-primary:hover, .btn-secondary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.btn-recognize:disabled {
+    background: #9E9E9E;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.secondary-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.status-message {
+    margin-top: 15px;
+    padding: 12px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    min-height: 20px;
+}
+
+.result-message {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    min-height: 20px;
+}
+
+/* Pantalla final */
+.end-container {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    padding: 40px 30px;
+    border-radius: var(--border-radius);
+    color: white;
+    text-align: center;
+    box-shadow: var(--shadow);
+}
+
+.trophy {
+    font-size: 60px;
+    margin-bottom: 20px;
+}
+
+.end-container h1 {
+    margin: 0 0 15px 0;
+    font-size: 32px;
+}
+
+.end-container p {
+    font-size: 18px;
+    margin-bottom: 25px;
+}
+
+.achievements {
+    background: rgba(255,255,255,0.2);
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+}
+
+.achievements h3 {
+    margin: 0 0 15px 0;
+}
+
+.achievements p {
+    margin: 8px 0;
+    font-size: 16px;
+}
+
+/* Estados de reconocimiento */
+.status-listening {
+    color: #FF5252 !important;
+}
+
+.status-success {
+    color: #69F0AE !important;
+}
+
+.status-error {
+    color: #FF5252 !important;
+}
+
+.status-playing {
+    color: #2196F3 !important;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+    
+    .game-container {
+        padding: 20px 15px;
+    }
+    
+    .word-display {
+        font-size: 28px;
+    }
+    
+    .control-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .btn-recognize, .btn-replay {
+        padding: 12px;
+    }
+}
