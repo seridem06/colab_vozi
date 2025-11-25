@@ -93,6 +93,62 @@ class VoziGame {
         }
     }
     
+    // NUEVO MÉTODO: Crear estrella flotante
+    crearEstrellaFlotante() {
+        const estrella = document.createElement('div');
+        estrella.innerHTML = '⭐';
+        estrella.style.cssText = `
+            position: fixed;
+            font-size: 2rem;
+            z-index: 1000;
+            pointer-events: none;
+            animation: flotarEstrella 2s ease-in-out forwards;
+            top: 50%;
+            left: 50%;
+        `;
+        
+        document.body.appendChild(estrella);
+        
+        // Animación aleatoria
+        const randomX = (Math.random() - 0.5) * 200;
+        const randomY = (Math.random() - 0.5) * 200;
+        
+        estrella.style.setProperty('--random-x', `${randomX}px`);
+        estrella.style.setProperty('--random-y', `${randomY}px`);
+        
+        // Remover después de la animación
+        setTimeout(() => {
+            if (estrella.parentNode) {
+                estrella.parentNode.removeChild(estrella);
+            }
+        }, 2000);
+    }
+    
+    // NUEVO MÉTODO: Crear emoji de lengua
+    crearEmojiLengua() {
+        const emoji = document.createElement('div');
+        emoji.innerHTML = '😛';
+        emoji.style.cssText = `
+            position: fixed;
+            font-size: 3rem;
+            z-index: 1000;
+            pointer-events: none;
+            animation: mostrarLengua 1.5s ease-in-out forwards;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        `;
+        
+        document.body.appendChild(emoji);
+        
+        // Remover después de la animación
+        setTimeout(() => {
+            if (emoji.parentNode) {
+                emoji.parentNode.removeChild(emoji);
+            }
+        }, 1500);
+    }
+    
     mostrarEstadoMicrofono(estado) {
         const statusElement = this.elements.recognitionStatus;
         if (!statusElement) return;
@@ -231,10 +287,64 @@ class VoziGame {
         this.elements.exitBtn = document.getElementById('exitBtn');
         this.elements.playAgainBtn = document.getElementById('playAgainBtn');
         
+        // Agregar estilos CSS para las animaciones
+        this.agregarEstilosAnimaciones();
+        
         // Ocultar pantalla de carga
         setTimeout(() => {
             this.hideLoadingScreen();
         }, 1000);
+    }
+    
+    // NUEVO MÉTODO: Agregar estilos CSS para animaciones
+    agregarEstilosAnimaciones() {
+        const styles = `
+            <style>
+                @keyframes flotarEstrella {
+                    0% {
+                        transform: translate(-50%, -50%) scale(0.5);
+                        opacity: 0;
+                    }
+                    20% {
+                        transform: translate(-50%, -50%) scale(1.2);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translate(calc(-50% + var(--random-x, 0px)), calc(-50% + var(--random-y, 0px))) scale(0.8);
+                        opacity: 0;
+                    }
+                }
+                
+                @keyframes mostrarLengua {
+                    0% {
+                        transform: translate(-50%, -50%) scale(0.3);
+                        opacity: 0;
+                    }
+                    30% {
+                        transform: translate(-50%, -50%) scale(1.1);
+                        opacity: 1;
+                    }
+                    70% {
+                        transform: translate(-50%, -50%) scale(1);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translate(-50%, -50%) scale(0.8);
+                        opacity: 0;
+                    }
+                }
+                
+                .floating-star {
+                    animation: flotarEstrella 2s ease-in-out forwards;
+                }
+                
+                .tongue-emoji {
+                    animation: mostrarLengua 1.5s ease-in-out forwards;
+                }
+            </style>
+        `;
+        
+        document.head.insertAdjacentHTML('beforeend', styles);
     }
     
     async loadAudioLists() {
@@ -590,6 +700,9 @@ class VoziGame {
             this.estrellas++;
             this.oportunidadesRestantes = 3;
 
+            // NUEVO: Crear estrella flotante
+            this.crearEstrellaFlotante();
+
             // Reproducir audio de felicitaciones
             console.log("✅ ¡ACERTASTE EXACTAMENTE!");
             this.reproducirAudioFeedback("felicidades");
@@ -625,6 +738,9 @@ class VoziGame {
 
         } else {
             this.oportunidadesRestantes--;
+
+            // NUEVO: Crear emoji de lengua cuando pronuncia mal
+            this.crearEmojiLengua();
 
             this.elements.result.textContent = `❌ No es correcto. Dijiste: "${textoReconocido}"`;
             this.elements.result.style.background = 'rgba(244, 67, 54, 0.3)';
