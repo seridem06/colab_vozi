@@ -348,4 +348,98 @@ body {
     .btn-recognize, .btn-replay {
         padding: 12px;
     }
+
+    /* Estados del micrófono */
+.status-microphone-request {
+    background: rgba(255, 193, 7, 0.3) !important;
+    color: #FFA000 !important;
+    border-left: 4px solid #FFC107 !important;
+}
+
+.status-microphone-allowed {
+    background: rgba(76, 175, 80, 0.3) !important;
+    color: #4CAF50 !important;
+    border-left: 4px solid #4CAF50 !important;
+}
+
+.status-microphone-denied {
+    background: rgba(244, 67, 54, 0.3) !important;
+    color: #F44336 !important;
+    border-left: 4px solid #F44336 !important;
+}
+
+/* Mejoras para mensajes de estado */
+.status-message {
+    line-height: 1.4;
+    text-align: left;
+    padding: 15px !important;
+}
+
+.status-message strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.status-message small {
+    opacity: 0.8;
+    font-size: 12px;
+}
+
+/* Botón de reconocimiento cuando está deshabilitado */
+.btn-recognize:disabled {
+    background: #9E9E9E !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+.btn-recognize:disabled:hover {
+    transform: none !important;
+}
+}
+
+/* Estados del micrófono */
+.status-microphone-request {
+    background: rgba(255, 193, 7, 0.3) !important;
+    color: #FFA000 !important;
+    border-left: 4px solid #FFC107 !important;
+}
+
+.status-microphone-allowed {
+    background: rgba(76, 175, 80, 0.3) !important;
+    color: #4CAF50 !important;
+    border-left: 4px solid #4CAF50 !important;
+}
+
+.status-microphone-denied {
+    background: rgba(244, 67, 54, 0.3) !important;
+    color: #F44336 !important;
+    border-left: 4px solid #F44336 !important;
+}
+
+/* Mejoras para mensajes de estado */
+.status-message {
+    line-height: 1.4;
+    text-align: left;
+    padding: 15px !important;
+}
+
+.status-message strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.status-message small {
+    opacity: 0.8;
+    font-size: 12px;
+}
+
+/* Botón de reconocimiento cuando está deshabilitado */
+.btn-recognize:disabled {
+    background: #9E9E9E !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+.btn-recognize:disabled:hover {
+    transform: none !important;
 }

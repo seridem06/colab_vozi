@@ -7,15 +7,17 @@ class VoziGame {
         this.palabrasNivelActual = [];
         this.indicePalabraActual = 0;
         this.juegoTerminado = false;
+        this.microfonoPermitido = false;
+        this.solicitandoMicrofono = false;
         
-        // Configuración de rutas de audio
+        // Configuración de rutas de audio - RELATIVAS
         this.audioPaths = {
             nivel_001: 'assets/audios/nivel_001/',
             nivel_002: 'assets/audios/nivel_002/',
             feedback: 'assets/audios/pronuncia_bien/'
         };
         
-        // Listas de palabras (se cargarán dinámicamente)
+        // Listas de palabras (se cargarán desde los archivos reales)
         this.palabrasNivel001 = [];
         this.palabrasNivel002 = [];
         this.audiosFeedback = [];
@@ -32,6 +34,175 @@ class VoziGame {
         await this.loadAudioLists();
         this.setupEventListeners();
         this.showInstructions();
+        // Inicializar reconocimiento de voz
+        this.inicializarReconocimientoVoz();
+    }
+    
+    async inicializarReconocimientoVoz() {
+        // Verificar compatibilidad primero
+        if (!this.isSpeechRecognitionSupported()) {
+            this.mostrarErrorCompatibilidad();
+            return;
+        }
+        
+        // Intentar obtener permisos del micrófono automáticamente
+        await this.solicitarPermisoMicrofono();
+    }
+    
+    isSpeechRecognitionSupported() {
+        return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+    }
+    
+    async solicitarPermisoMicrofono() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.warn('getUserMedia no es compatible con este navegador');
+            this.mostrarEstadoMicrofono('no-compatible');
+            return;
+        }
+
+        try {
+            this.mostrarEstadoMicrofono('solicitando');
+            this.solicitandoMicrofono = true;
+            
+            // Solicitar acceso al micrófono
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                } 
+            });
+            
+            // Detener el stream inmediatamente - solo necesitamos el permiso
+            stream.getTracks().forEach(track => track.stop());
+            
+            this.microfonoPermitido = true;
+            this.solicitandoMicrofono = false;
+            this.mostrarEstadoMicrofono('permitido');
+            console.log('✅ Permiso de micrófono concedido');
+            
+        } catch (error) {
+            this.microfonoPermitido = false;
+            this.solicitandoMicrofono = false;
+            this.mostrarEstadoMicrofono('denegado');
+            console.error('❌ Error al acceder al micrófono:', error);
+            
+            if (error.name === 'NotAllowedError') {
+                this.mostrarModalPermisos();
+            }
+        }
+    }
+    
+    mostrarEstadoMicrofono(estado) {
+        const statusElement = this.elements.recognitionStatus;
+        if (!statusElement) return;
+        
+        switch(estado) {
+            case 'solicitando':
+                statusElement.innerHTML = '🎤 <strong>Solicitando acceso al micrófono...</strong><br><small>Por favor, permite el acceso cuando tu navegador lo solicite</small>';
+                statusElement.className = 'status-message status-microphone-request';
+                break;
+                
+            case 'permitido':
+                statusElement.innerHTML = '✅ <strong>Micrófono permitido</strong><br><small>Ahora puedes usar el reconocimiento de voz</small>';
+                statusElement.className = 'status-message status-microphone-allowed';
+                break;
+                
+            case 'denegado':
+                statusElement.innerHTML = '❌ <strong>Acceso al micrófono denegado</strong><br><small>Haz clic en "HABLAR" para intentar nuevamente</small>';
+                statusElement.className = 'status-message status-microphone-denied';
+                break;
+                
+            case 'no-compatible':
+                statusElement.innerHTML = '⚠️ <strong>Navegador no compatible</strong><br><small>Usa Chrome, Edge o Safari para reconocimiento de voz</small>';
+                statusElement.className = 'status-message status-microphone-denied';
+                break;
+        }
+    }
+    
+    mostrarModalPermisos() {
+        // Verificar si ya existe un modal
+        if (document.getElementById('microphoneModal')) return;
+        
+        const modalHtml = `
+        <div id="microphoneModal" style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        ">
+            <div style="
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                max-width: 400px;
+                text-align: center;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            ">
+                <div style="font-size: 48px; margin-bottom: 20px;">🎤</div>
+                <h3 style="margin: 0 0 15px 0; color: #333;">Permiso de Micrófono Requerido</h3>
+                <p style="color: #666; margin-bottom: 20px; line-height: 1.5;">
+                    Para jugar a Vozi necesitas permitir el acceso al micrófono. 
+                    Cuando hagas clic en "Permitir", tu navegador te pedirá los permisos.
+                </p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button id="btnPermitirMicrofono" style="
+                        background: #4CAF50;
+                        color: white;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 25px;
+                        cursor: pointer;
+                        font-weight: bold;
+                    ">Permitir Micrófono</button>
+                    <button id="btnCancelarMicrofono" style="
+                        background: #f44336;
+                        color: white;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 25px;
+                        cursor: pointer;
+                        font-weight: bold;
+                    ">Cancelar</button>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        document.getElementById('btnPermitirMicrofono').addEventListener('click', async () => {
+            document.getElementById('microphoneModal').remove();
+            await this.solicitarPermisoMicrofono();
+        });
+        
+        document.getElementById('btnCancelarMicrofono').addEventListener('click', () => {
+            document.getElementById('microphoneModal').remove();
+            this.mostrarEstadoMicrofono('denegado');
+        });
+    }
+    
+    mostrarErrorCompatibilidad() {
+        const statusElement = this.elements.recognitionStatus;
+        if (!statusElement) return;
+        
+        statusElement.innerHTML = `
+            ❌ <strong>Navegador no compatible</strong><br>
+            <small>El reconocimiento de voz no está disponible en este navegador.</small><br>
+            <small>Usa <strong>Chrome</strong>, <strong>Edge</strong> o <strong>Safari</strong> para jugar.</small>
+        `;
+        statusElement.className = 'status-message status-microphone-denied';
+        
+        if (this.elements.recognizeBtn) {
+            this.elements.recognizeBtn.disabled = true;
+            this.elements.recognizeBtn.style.background = '#9E9E9E';
+        }
     }
     
     async loadDOMElements() {
@@ -60,19 +231,18 @@ class VoziGame {
         this.elements.exitBtn = document.getElementById('exitBtn');
         this.elements.playAgainBtn = document.getElementById('playAgainBtn');
         
-        // Ocultar pantalla de carga después de un breve tiempo
+        // Ocultar pantalla de carga
         setTimeout(() => {
             this.hideLoadingScreen();
-        }, 1500);
+        }, 1000);
     }
     
     async loadAudioLists() {
         try {
-            // En un entorno real, aquí harías una petición al servidor
-            // Para este ejemplo, simulamos la carga de archivos
-            this.palabrasNivel001 = await this.simulateAudioLoad('nivel_001');
-            this.palabrasNivel002 = await this.simulateAudioLoad('nivel_002');
-            this.audiosFeedback = await this.simulateAudioLoad('feedback');
+            // Cargar listas de archivos de audio disponibles
+            this.palabrasNivel001 = await this.getAvailableAudios('nivel_001');
+            this.palabrasNivel002 = await this.getAvailableAudios('nivel_002');
+            this.audiosFeedback = await this.getAvailableAudios('pronuncia_bien');
             
             console.log('🔊 Audios cargados:', {
                 nivel1: this.palabrasNivel001,
@@ -84,19 +254,15 @@ class VoziGame {
         }
     }
     
-    async simulateAudioLoad(nivel) {
-        // Simulación de carga de archivos de audio
-        // En producción, esto se reemplazaría con una llamada al servidor
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const mockFiles = {
-                    'nivel_001': ['casa', 'mesa', 'silla', 'gato', 'perro', 'sol'],
-                    'nivel_002': ['árbol', 'flor', 'puerta', 'ventana', 'libro', 'lápiz'],
-                    'feedback': ['estas_cerca', 'intentalo', 'pronuncia_bien', 'felicidades', 'corregir']
-                };
-                resolve(mockFiles[nivel] || []);
-            }, 500);
-        });
+    async getAvailableAudios(nivel) {
+        // Lista de archivos conocidos basada en tu estructura
+        const archivosConocidos = {
+            'nivel_001': ['dado', 'gato', 'helado', 'perro', 'rama'],
+            'nivel_002': ['ardilla', 'ferrocarril', 'pelota', 'ratón', 'tortuga'],
+            'pronuncia_bien': ['corregir', 'estas_cerca', 'felicidades', 'intentalo', 'pronuncia_bien']
+        };
+        
+        return archivosConocidos[nivel] || [];
     }
     
     setupEventListeners() {
@@ -109,16 +275,6 @@ class VoziGame {
         // Botones de juego
         this.elements.recognizeBtn.addEventListener('click', () => this.startRecognition());
         this.elements.replayBtn.addEventListener('click', () => this.playCurrentAudio());
-        
-        // Inicializar reconocimiento de voz
-        if (window.VoiceRecognition) {
-            window.VoiceRecognition.init({
-                onStart: () => this.onRecognitionStart(),
-                onResult: (text) => this.processRecognitionResult(text),
-                onError: (error) => this.onRecognitionError(error),
-                onEnd: () => this.onRecognitionEnd()
-            });
-        }
     }
     
     hideLoadingScreen() {
@@ -143,7 +299,7 @@ class VoziGame {
         const palabrasDisponibles = this.nivelActual === 1 ? 
             [...this.palabrasNivel001] : [...this.palabrasNivel002];
         
-        // Seleccionar 3 palabras aleatorias únicas
+        // Seleccionar 3 palabras aleatorias únicas (igual que Colab)
         if (palabrasDisponibles.length >= 3) {
             this.palabrasNivelActual = this.getRandomSample(palabrasDisponibles, 3);
         } else {
@@ -165,7 +321,7 @@ class VoziGame {
             this.indicePalabraActual++;
             return palabra;
         } else {
-            // Si ya se completaron todas las palabras, seleccionar nuevas
+            // Si ya se completaron todas las palabras, seleccionar nuevas (igual que Colab)
             this.seleccionarPalabrasNivel();
             return this.palabrasNivelActual[0] || null;
         }
@@ -180,7 +336,7 @@ class VoziGame {
         this.elements.currentProgress.textContent = this.indicePalabraActual;
         this.elements.totalWords.textContent = this.palabrasNivelActual.length;
         
-        // Actualizar puntos de progreso
+        // Actualizar puntos de progreso (igual que Colab)
         this.updateProgressDots();
         
         // Limpiar mensajes
@@ -218,75 +374,106 @@ class VoziGame {
         this.elements.recognitionStatus.textContent = '🔊 Reproduciendo audio...';
         this.elements.recognitionStatus.className = 'status-message status-playing';
         
-        if (window.AudioPlayer) {
-            window.AudioPlayer.playAudio(audioPath)
-                .then(() => {
-                    this.elements.recognitionStatus.textContent = '👆 Presiona "HABLAR" para empezar';
-                    this.elements.recognitionStatus.className = 'status-message';
-                })
-                .catch(error => {
-                    console.error('Error reproduciendo audio:', error);
-                    this.elements.recognitionStatus.textContent = '❌ Error reproduciendo audio';
-                    this.elements.recognitionStatus.className = 'status-message status-error';
-                });
-        }
+        this.playAudio(audioPath)
+            .then(() => {
+                this.elements.recognitionStatus.textContent = '👆 Presiona "HABLAR" para empezar';
+                this.elements.recognitionStatus.className = 'status-message';
+            })
+            .catch(error => {
+                console.error('Error reproduciendo audio:', error);
+                this.elements.recognitionStatus.textContent = '❌ Error reproduciendo audio';
+                this.elements.recognitionStatus.className = 'status-message status-error';
+            });
     }
     
-    startRecognition() {
-        if (window.VoiceRecognition) {
-            window.VoiceRecognition.start();
-        }
+    playAudio(audioPath) {
+        return new Promise((resolve, reject) => {
+            const audio = new Audio(audioPath);
+            audio.onloadeddata = () => {
+                audio.play().then(resolve).catch(reject);
+            };
+            audio.onerror = reject;
+            audio.onended = resolve;
+        });
     }
     
-    onRecognitionStart() {
-        this.elements.recognitionStatus.textContent = '● ESCUCHANDO... Habla ahora';
+    async startRecognition() {
+        // Verificar compatibilidad
+        if (!this.isSpeechRecognitionSupported()) {
+            this.mostrarErrorCompatibilidad();
+            return;
+        }
+
+        // Si no tenemos permiso o está en proceso, intentar obtenerlo
+        if (!this.microfonoPermitido || this.solicitandoMicrofono) {
+            await this.solicitarPermisoMicrofono();
+            
+            // Si aún no tenemos permiso, mostrar mensaje
+            if (!this.microfonoPermitido) {
+                this.elements.recognitionStatus.innerHTML = `
+                    ❌ <strong>Micrófono no disponible</strong><br>
+                    <small>Haz clic en "Permitir" cuando tu navegador lo solicite</small>
+                `;
+                this.elements.recognitionStatus.className = 'status-message status-microphone-denied';
+                return;
+            }
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'es-ES';
+
+        // Estado de escucha
+        this.elements.recognitionStatus.innerHTML = '● <strong>ESCUCHANDO...</strong><br><small>Habla ahora claramente</small>';
         this.elements.recognitionStatus.className = 'status-message status-listening';
-        
         this.elements.recognizeBtn.textContent = '🎤 ESCUCHANDO...';
         this.elements.recognizeBtn.disabled = true;
-    }
-    
-    processRecognitionResult(textoReconocido) {
-        console.log(`🎯 Texto reconocido: '${textoReconocido}'`);
-        console.log(`🎯 Palabra objetivo: '${this.palabraActual}'`);
-        
-        this.elements.recognitionStatus.textContent = `✅ Reconocido: ${textoReconocido}`;
-        this.elements.recognitionStatus.className = 'status-message status-success';
-        
-        // Comparar palabras
-        const esCorrecto = this.compararPalabrasExactas(textoReconocido, this.palabraActual);
-        
-        if (esCorrecto) {
-            this.procesarAcierto();
-        } else {
-            this.procesarError(textoReconocido);
+
+        recognition.onresult = (event) => {
+            const textoReconocido = event.results[0][0].transcript.toLowerCase().trim();
+            this.elements.recognitionStatus.innerHTML = `✅ <strong>Reconocido:</strong> ${textoReconocido}`;
+            this.elements.recognitionStatus.className = 'status-message status-success';
+            
+            this.procesarResultado(textoReconocido);
+        };
+
+        recognition.onerror = (event) => {
+            let mensajeError = '❌ <strong>Error:</strong> ';
+            
+            if (event.error == 'no-speech') {
+                mensajeError += 'No se detectó voz. Intenta hablar más fuerte.';
+            } else if (event.error == 'audio-capture') {
+                mensajeError += 'No se pudo capturar audio. Verifica tu micrófono.';
+                this.microfonoPermitido = false;
+            } else if (event.error == 'not-allowed') {
+                mensajeError += 'Permiso de micrófono denegado. Haz clic en "HABLAR" para intentar nuevamente.';
+                this.microfonoPermitido = false;
+                this.mostrarModalPermisos();
+            } else if (event.error == 'network') {
+                mensajeError += 'Error de red. Verifica tu conexión a internet.';
+            } else {
+                mensajeError += event.error;
+            }
+
+            this.elements.recognitionStatus.innerHTML = mensajeError;
+            this.elements.recognitionStatus.className = 'status-message status-error';
+            this.resetRecognitionButton();
+        };
+
+        recognition.onend = () => {
+            this.resetRecognitionButton();
+        };
+
+        try {
+            recognition.start();
+        } catch (error) {
+            this.elements.recognitionStatus.innerHTML = '❌ <strong>Error al iniciar reconocimiento</strong>';
+            this.elements.recognitionStatus.className = 'status-message status-error';
+            this.resetRecognitionButton();
         }
-    }
-    
-    onRecognitionError(error) {
-        let mensajeError = '❌ Error: ';
-        
-        switch (error) {
-            case 'no-speech':
-                mensajeError += 'No se detectó voz';
-                break;
-            case 'audio-capture':
-                mensajeError += 'No se pudo capturar audio';
-                break;
-            case 'not-allowed':
-                mensajeError += 'Permiso de micrófono denegado';
-                break;
-            default:
-                mensajeError += error;
-        }
-        
-        this.elements.recognitionStatus.textContent = mensajeError;
-        this.elements.recognitionStatus.className = 'status-message status-error';
-        this.resetRecognitionButton();
-    }
-    
-    onRecognitionEnd() {
-        this.resetRecognitionButton();
     }
     
     resetRecognitionButton() {
@@ -294,84 +481,198 @@ class VoziGame {
         this.elements.recognizeBtn.disabled = false;
     }
     
-    compararPalabrasExactas(textoReconocido, palabraObjetivo) {
+    // MÉTODOS IDÉNTICOS AL CÓDIGO COLAB
+    
+    detectarConfusionRL(textoReconocido, palabraObjetivo) {
+        const texto = textoReconocido.toLowerCase();
+        const objetivo = palabraObjetivo.toLowerCase();
+
+        // Caso 1: Palabra objetivo tiene R pero niño dijo L
+        if ('r'.includes(objetivo) && texto.includes('l')) {
+            const textoCorregido = texto.replace(/l/g, 'r');
+            if (textoCorregido === objetivo) {
+                return [true, "r_por_l", "Confundiste 'R' con 'L'. Para la R, haz vibrar la lengua"];
+            }
+        }
+
+        // Caso 2: Palabra objetivo tiene RR pero niño dijo L
+        if (objetivo.includes('rr') && texto.includes('l')) {
+            const textoCorregido = texto.replace(/l/g, 'rr');
+            if (textoCorregido === objetivo) {
+                return [true, "rr_por_l", "Confundiste 'RR' con 'L'. Para la RR, vibra la lengua más fuerte"];
+            }
+        }
+
+        // Caso 3: Palabra objetivo tiene L pero niño dijo R
+        if (objetivo.includes('l') && texto.includes('r')) {
+            const textoCorregido = texto.replace(/r/g, 'l');
+            if (textoCorregido === objetivo) {
+                return [true, "l_por_r", "Confundiste 'L' con 'R'. Para la L, toca el paladar con la punta de la lengua"];
+            }
+        }
+
+        return [false, "", ""];
+    }
+
+    calcularSimilitud(texto1, texto2) {
+        // Implementación simple de similitud (puedes mejorarla)
+        const longer = texto1.length > texto2.length ? texto1 : texto2;
+        const shorter = texto1.length > texto2.length ? texto2 : texto1;
+        
+        if (longer.length === 0) return 1.0;
+        
+        return (longer.length - this.editDistance(longer, shorter)) / parseFloat(longer.length);
+    }
+
+    editDistance(s1, s2) {
+        s1 = s1.toLowerCase();
+        s2 = s2.toLowerCase();
+
+        const costs = [];
+        for (let i = 0; i <= s1.length; i++) {
+            let lastValue = i;
+            for (let j = 0; j <= s2.length; j++) {
+                if (i === 0) {
+                    costs[j] = j;
+                } else {
+                    if (j > 0) {
+                        let newValue = costs[j - 1];
+                        if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+                            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                        }
+                        costs[j - 1] = lastValue;
+                        lastValue = newValue;
+                    }
+                }
+            }
+            if (i > 0) costs[s2.length] = lastValue;
+        }
+        return costs[s2.length];
+    }
+
+    compararPalabras(textoReconocido, palabraObjetivo) {
         const textoLimpio = textoReconocido.toLowerCase().trim();
         const objetivoLimpio = palabraObjetivo.toLowerCase().trim();
-        
+
         console.log(`🔍 Comparando EXACTO: '${textoLimpio}' con '${objetivoLimpio}'`);
-        
-        return textoLimpio === objetivoLimpio;
-    }
-    
-    procesarAcierto() {
-        this.estrellas++;
-        this.oportunidadesRestantes = 3;
-        
-        // Mostrar mensaje de éxito
-        this.elements.result.textContent = '✅ ¡ACERTASTE EXACTAMENTE!';
-        this.elements.result.style.background = 'rgba(76, 175, 80, 0.3)';
-        this.elements.result.style.color = '#69F0AE';
-        
-        // Reproducir audio de felicitaciones
-        this.playFeedbackAudio('felicidades');
-        
-        // Verificar si pasó al nivel 2 o terminó el juego
-        setTimeout(() => {
-            if (this.estrellas >= 3) {
-                if (this.nivelActual === 1) {
-                    this.pasarAlNivel2();
-                } else {
-                    this.terminarJuego();
-                }
-            } else {
-                this.siguientePalabra();
-            }
-        }, 3000);
-    }
-    
-    procesarError(textoReconocido) {
-        this.oportunidadesRestantes--;
-        
-        // Mostrar mensaje de error
-        this.elements.result.textContent = `❌ No es correcto. Dijiste: "${textoReconocido}"`;
-        this.elements.result.style.background = 'rgba(244, 67, 54, 0.3)';
-        this.elements.result.style.color = '#FF5252';
-        
-        // Reproducir feedback según las oportunidades restantes
-        let tipoFeedback = 'corregir';
-        if (this.oportunidadesRestantes === 2) {
-            tipoFeedback = 'cerca';
-        } else if (this.oportunidadesRestantes === 1) {
-            tipoFeedback = 'intentalo';
+
+        // SOLO COMPARACIÓN EXACTA (igual que Colab)
+        if (textoLimpio === objetivoLimpio) {
+            return [true, "exacta", ""];
         }
-        
-        this.playFeedbackAudio(tipoFeedback);
-        
-        if (this.oportunidadesRestantes > 0) {
-            setTimeout(() => {
-                this.updateGameUI();
-                this.elements.result.textContent = '';
-            }, 3000);
+
+        // Verificar confusiones específicas R/L
+        const [tieneConfusionRL, tipoConfusion, mensajeConfusion] = this.detectarConfusionRL(textoLimpio, objetivoLimpio);
+        if (tieneConfusionRL) {
+            return [false, tipoConfusion, mensajeConfusion];
+        }
+
+        // Calcular similitud para determinar el tipo de feedback
+        const similitud = this.calcularSimilitud(textoLimpio, objetivoLimpio);
+
+        if (similitud < 0.3) {
+            return [false, "completamente_diferente", ""];
+        } else if (similitud < 0.6) {
+            return [false, "poco_similar", ""];
         } else {
-            this.oportunidadesRestantes = 3;
-            setTimeout(() => {
-                this.siguientePalabra();
-            }, 2000);
+            return [false, "muy_similar", ""];
         }
     }
-    
-    playFeedbackAudio(tipoFeedback) {
+
+    procesarResultado(textoReconocido) {
+        console.log(`🎯 Texto reconocido: '${textoReconocido}'`);
+        console.log(`🎯 Palabra objetivo: '${this.palabraActual}'`);
+
+        // Comparar las palabras - SOLO EXACTO (igual que Colab)
+        const [esCorrecto, tipoComparacion, mensajeEspecifico] = this.compararPalabras(textoReconocido, this.palabraActual);
+
+        if (esCorrecto) {
+            this.estrellas++;
+            this.oportunidadesRestantes = 3;
+
+            // Reproducir audio de felicitaciones
+            console.log("✅ ¡ACERTASTE EXACTAMENTE!");
+            this.reproducirAudioFeedback("felicidades");
+
+            this.elements.result.textContent = '✅ ¡ACERTASTE EXACTAMENTE!';
+            this.elements.result.style.background = 'rgba(76, 175, 80, 0.3)';
+            this.elements.result.style.color = '#69F0AE';
+
+            // Verificar si pasó al nivel 2 o terminó el juego
+            setTimeout(() => {
+                if (this.estrellas >= 3) {
+                    if (this.nivelActual === 1) {
+                        console.log("🚀 Pasando al NIVEL 2...");
+                        this.nivelActual = 2;
+                        this.estrellas = 0;
+                        this.seleccionarPalabrasNivel();
+                        
+                        this.elements.result.textContent = '🚀 ¡Pasaste al NIVEL 2!';
+                        this.elements.result.style.background = 'rgba(255, 152, 0, 0.3)';
+                        this.elements.result.style.color = '#FFCC80';
+                        
+                        setTimeout(() => {
+                            this.siguientePalabra();
+                        }, 3000);
+                    } else {
+                        this.juegoTerminado = true;
+                        this.mostrarPantallaFinal();
+                    }
+                } else {
+                    this.siguientePalabra();
+                }
+            }, 3000);
+
+        } else {
+            this.oportunidadesRestantes--;
+
+            this.elements.result.textContent = `❌ No es correcto. Dijiste: "${textoReconocido}"`;
+            this.elements.result.style.background = 'rgba(244, 67, 54, 0.3)';
+            this.elements.result.style.color = '#FF5252';
+
+            // Determinar qué tipo de feedback reproducir (igual que Colab)
+            if (["r_por_l", "rr_por_l", "l_por_r"].includes(tipoComparacion)) {
+                this.reproducirAudioFeedback("corregir");
+            } else if (tipoComparacion === "completamente_diferente") {
+                this.reproducirAudioFeedback("corregir");
+            } else if (tipoComparacion === "poco_similar") {
+                this.reproducirAudioFeedback("bien");
+            } else {
+                if (this.oportunidadesRestantes === 2) {
+                    this.reproducirAudioFeedback("cerca");
+                } else if (this.oportunidadesRestantes === 1) {
+                    this.reproducirAudioFeedback("intentalo");
+                } else {
+                    this.reproducirAudioFeedback("bien");
+                }
+            }
+
+            if (this.oportunidadesRestantes > 0) {
+                setTimeout(() => {
+                    this.updateGameUI();
+                    this.elements.result.textContent = '';
+                }, 3000);
+            } else {
+                this.oportunidadesRestantes = 3;
+                setTimeout(() => {
+                    this.siguientePalabra();
+                }, 2000);
+            }
+        }
+    }
+
+    reproducirAudioFeedback(tipoFeedback) {
         const mapeoArchivos = {
             "cerca": ["estas_cerca", "estas cerca", "cerca"],
-            "intentalo": ["inténtalo", "intentalo", "intenta", "inténtalo de nuevo"],
+            "intentalo": ["intentalo", "inténtalo", "intenta", "inténtalo de nuevo"],
             "bien": ["pronuncia_bien", "pronuncia bien", "bien", "tu puedes"],
             "felicidades": ["felicidades", "excelente", "muy bien", "perfecto"],
             "corregir": ["corregir", "no es la palabra", "escucha bien", "incorrecto"]
         };
-        
+
         const archivosPosibles = mapeoArchivos[tipoFeedback] || [];
         let archivoEncontrado = null;
-        
+
         // Buscar archivo disponible
         for (const archivo of archivosPosibles) {
             if (this.audiosFeedback.includes(archivo)) {
@@ -379,29 +680,29 @@ class VoziGame {
                 break;
             }
         }
-        
+
         if (!archivoEncontrado && this.audiosFeedback.length > 0) {
             archivoEncontrado = this.audiosFeedback[0];
         }
-        
+
         if (archivoEncontrado) {
             const audioPath = `${this.audioPaths.feedback}${archivoEncontrado}.m4a`;
             console.log(`🎧 Reproduciendo feedback: ${archivoEncontrado}`);
             
-            if (window.AudioPlayer) {
-                window.AudioPlayer.playAudio(audioPath);
-            }
+            this.playAudio(audioPath).catch(error => {
+                console.error('Error reproduciendo feedback:', error);
+            });
         }
     }
-    
+
     siguientePalabra() {
         if (this.juegoTerminado) {
             this.mostrarPantallaFinal();
             return;
         }
-        
+
         const siguientePalabra = this.obtenerSiguientePalabra();
-        
+
         if (siguientePalabra) {
             this.palabraActual = siguientePalabra;
             this.updateGameUI();
@@ -415,47 +716,29 @@ class VoziGame {
             }
         }
     }
-    
-    pasarAlNivel2() {
-        this.nivelActual = 2;
-        this.estrellas = 0;
-        this.seleccionarPalabrasNivel();
-        this.palabraActual = this.obtenerSiguientePalabra();
-        this.updateGameUI();
-        this.playCurrentAudio();
-        
-        this.elements.result.textContent = '🚀 ¡Pasaste al NIVEL 2!';
-        this.elements.result.style.background = 'rgba(255, 152, 0, 0.3)';
-        this.elements.result.style.color = '#FFCC80';
-        
-        setTimeout(() => {
-            this.elements.result.textContent = '';
-        }, 3000);
-    }
-    
-    terminarJuego() {
-        this.juegoTerminado = true;
-        this.mostrarPantallaFinal();
-    }
-    
+
     mostrarPantallaFinal() {
         this.elements.gameScreen.classList.add('hidden');
         this.elements.endScreen.classList.remove('hidden');
     }
-    
+
     restartGame() {
         // Reiniciar estado del juego
         this.estrellas = 0;
         this.nivelActual = 1;
         this.oportunidadesRestantes = 3;
         this.juegoTerminado = false;
-        
+        this.microfonoPermitido = false;
+
         // Volver a la pantalla de instrucciones
         this.elements.endScreen.classList.add('hidden');
         this.elements.gameScreen.classList.add('hidden');
         this.showInstructions();
+        
+        // Re-inicializar reconocimiento de voz
+        this.inicializarReconocimientoVoz();
     }
-    
+
     exitGame() {
         if (confirm('¿Estás seguro de que quieres salir del juego?')) {
             this.elements.gameScreen.classList.add('hidden');
