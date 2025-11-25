@@ -367,8 +367,8 @@ class VoziGame {
     async getAvailableAudios(nivel) {
         // Lista de archivos conocidos basada en tu estructura
         const archivosConocidos = {
-            'nivel_001': ['dado', 'gato', 'helado', 'perro', 'rama'],
-            'nivel_002': ['ardilla', 'ferrocarril', 'pelota', 'ratón', 'tortuga'],
+            'nivel_001': ['carril', 'carro', 'loro', 'perro', 'rama'],
+            'nivel_002': ['ardilla', 'ferrocarril', 'ratón', 'tigrillo', 'tortuga','tralalerotralalá.'],
             'pronuncia_bien': ['corregir', 'estas_cerca', 'felicidades', 'intentalo', 'pronuncia_bien']
         };
         
