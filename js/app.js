@@ -99,7 +99,7 @@ class VoziGame {
         estrella.innerHTML = '⭐';
         estrella.style.cssText = `
             position: fixed;
-            font-size: 2rem;
+            font-size: 10rem;
             z-index: 1000;
             pointer-events: none;
             animation: flotarEstrella 2s ease-in-out forwards;
@@ -130,7 +130,7 @@ class VoziGame {
         emoji.innerHTML = '😛';
         emoji.style.cssText = `
             position: fixed;
-            font-size: 3rem;
+            font-size: 12rem;
             z-index: 1000;
             pointer-events: none;
             animation: mostrarLengua 1.5s ease-in-out forwards;
