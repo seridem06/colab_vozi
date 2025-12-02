@@ -9,6 +9,7 @@ class VoziGame {
         this.juegoTerminado = false;
         this.microfonoPermitido = false;
         this.solicitandoMicrofono = false;
+        this.reconocimientoActivo = false;
         
         // Configuración de rutas de audio - RELATIVAS
         this.audioPaths = {
@@ -64,14 +65,26 @@ class VoziGame {
             this.mostrarEstadoMicrofono('solicitando');
             this.solicitandoMicrofono = true;
             
-            // Solicitar acceso al micrófono
-            const stream = await navigator.mediaDevices.getUserMedia({ 
+            // Solicitar acceso al micrófono con configuraciones para PC
+            const constraints = {
                 audio: {
                     echoCancellation: true,
                     noiseSuppression: true,
-                    autoGainControl: true
-                } 
-            });
+                    autoGainControl: true,
+                    sampleRate: 44100,
+                    channelCount: 1
+                },
+                video: false
+            };
+            
+            console.log('🎤 Solicitando permisos con constraints:', constraints);
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            // Obtener información del dispositivo
+            const tracks = stream.getAudioTracks();
+            if (tracks.length > 0) {
+                console.log('✅ Micrófono conectado:', tracks[0].label);
+            }
             
             // Detener el stream inmediatamente - solo necesitamos el permiso
             stream.getTracks().forEach(track => track.stop());
@@ -84,16 +97,21 @@ class VoziGame {
         } catch (error) {
             this.microfonoPermitido = false;
             this.solicitandoMicrofono = false;
-            this.mostrarEstadoMicrofono('denegado');
-            console.error('❌ Error al acceder al micrófono:', error);
+            console.error('❌ Error al acceder al micrófono:', error.name, error.message);
             
             if (error.name === 'NotAllowedError') {
+                this.mostrarEstadoMicrofono('denegado');
                 this.mostrarModalPermisos();
+            } else if (error.name === 'NotFoundError') {
+                this.mostrarEstadoMicrofono('no-microfono');
+            } else if (error.name === 'NotReadableError') {
+                this.mostrarEstadoMicrofono('error-hardware');
+            } else {
+                this.mostrarEstadoMicrofono('error-desconocido');
             }
         }
     }
     
-    // NUEVO MÉTODO: Crear estrella flotante
     crearEstrellaFlotante() {
         const estrella = document.createElement('div');
         estrella.innerHTML = '⭐';
@@ -109,14 +127,12 @@ class VoziGame {
         
         document.body.appendChild(estrella);
         
-        // Animación aleatoria
         const randomX = (Math.random() - 0.5) * 200;
         const randomY = (Math.random() - 0.5) * 200;
         
         estrella.style.setProperty('--random-x', `${randomX}px`);
         estrella.style.setProperty('--random-y', `${randomY}px`);
         
-        // Remover después de la animación
         setTimeout(() => {
             if (estrella.parentNode) {
                 estrella.parentNode.removeChild(estrella);
@@ -124,7 +140,6 @@ class VoziGame {
         }, 2000);
     }
     
-    // NUEVO MÉTODO: Crear emoji de lengua
     crearEmojiLengua() {
         const emoji = document.createElement('div');
         emoji.innerHTML = '😛';
@@ -141,7 +156,6 @@ class VoziGame {
         
         document.body.appendChild(emoji);
         
-        // Remover después de la animación
         setTimeout(() => {
             if (emoji.parentNode) {
                 emoji.parentNode.removeChild(emoji);
@@ -169,15 +183,29 @@ class VoziGame {
                 statusElement.className = 'status-message status-microphone-denied';
                 break;
                 
+            case 'no-microfono':
+                statusElement.innerHTML = '🎤 <strong>No se encontró micrófono</strong><br><small>Conecta un micrófono a tu computadora</small>';
+                statusElement.className = 'status-message status-microphone-denied';
+                break;
+                
+            case 'error-hardware':
+                statusElement.innerHTML = '🔧 <strong>Error de hardware</strong><br><small>El micrófono está siendo usado por otra aplicación</small>';
+                statusElement.className = 'status-message status-microphone-denied';
+                break;
+                
             case 'no-compatible':
                 statusElement.innerHTML = '⚠️ <strong>Navegador no compatible</strong><br><small>Usa Chrome, Edge o Safari para reconocimiento de voz</small>';
+                statusElement.className = 'status-message status-microphone-denied';
+                break;
+                
+            case 'error-desconocido':
+                statusElement.innerHTML = '❓ <strong>Error desconocido</strong><br><small>Intenta reiniciar el navegador</small>';
                 statusElement.className = 'status-message status-microphone-denied';
                 break;
         }
     }
     
     mostrarModalPermisos() {
-        // Verificar si ya existe un modal
         if (document.getElementById('microphoneModal')) return;
         
         const modalHtml = `
@@ -204,8 +232,12 @@ class VoziGame {
                 <div style="font-size: 48px; margin-bottom: 20px;">🎤</div>
                 <h3 style="margin: 0 0 15px 0; color: #333;">Permiso de Micrófono Requerido</h3>
                 <p style="color: #666; margin-bottom: 20px; line-height: 1.5;">
-                    Para jugar a Vozi necesitas permitir el acceso al micrófono. 
-                    Cuando hagas clic en "Permitir", tu navegador te pedirá los permisos.
+                    Para jugar a Vozi necesitas permitir el acceso al micrófono.<br><br>
+                    <strong>En PC:</strong><br>
+                    1. Haz clic en "Permitir Micrófono"<br>
+                    2. Asegúrate de tener un micrófono conectado<br>
+                    3. En Windows: Configuración > Sonido > Entrada<br>
+                    4. Selecciona el micrófono correcto
                 </p>
                 <div style="display: flex; gap: 10px; justify-content: center;">
                     <button id="btnPermitirMicrofono" style="
@@ -287,16 +319,13 @@ class VoziGame {
         this.elements.exitBtn = document.getElementById('exitBtn');
         this.elements.playAgainBtn = document.getElementById('playAgainBtn');
         
-        // Agregar estilos CSS para las animaciones
         this.agregarEstilosAnimaciones();
         
-        // Ocultar pantalla de carga
         setTimeout(() => {
             this.hideLoadingScreen();
         }, 1000);
     }
     
-    // NUEVO MÉTODO: Agregar estilos CSS para animaciones
     agregarEstilosAnimaciones() {
         const styles = `
             <style>
@@ -333,14 +362,6 @@ class VoziGame {
                         opacity: 0;
                     }
                 }
-                
-                .floating-star {
-                    animation: flotarEstrella 2s ease-in-out forwards;
-                }
-                
-                .tongue-emoji {
-                    animation: mostrarLengua 1.5s ease-in-out forwards;
-                }
             </style>
         `;
         
@@ -349,7 +370,6 @@ class VoziGame {
     
     async loadAudioLists() {
         try {
-            // Cargar listas de archivos de audio disponibles
             this.palabrasNivel001 = await this.getAvailableAudios('nivel_001');
             this.palabrasNivel002 = await this.getAvailableAudios('nivel_002');
             this.audiosFeedback = await this.getAvailableAudios('pronuncia_bien');
@@ -365,7 +385,6 @@ class VoziGame {
     }
     
     async getAvailableAudios(nivel) {
-        // Lista de archivos conocidos basada en tu estructura
         const archivosConocidos = {
             'nivel_001': ['carril', 'carro', 'loro', 'perro', 'rama'],
             'nivel_002': ['ardilla', 'ferrocarril', 'ratón', 'tigrillo', 'tortuga','tralalerotralalá'],
@@ -376,13 +395,10 @@ class VoziGame {
     }
     
     setupEventListeners() {
-        // Botones de navegación
         this.elements.startGameBtn.addEventListener('click', () => this.startGame());
         this.elements.restartBtn.addEventListener('click', () => this.restartGame());
         this.elements.exitBtn.addEventListener('click', () => this.exitGame());
         this.elements.playAgainBtn.addEventListener('click', () => this.restartGame());
-        
-        // Botones de juego
         this.elements.recognizeBtn.addEventListener('click', () => this.startRecognition());
         this.elements.replayBtn.addEventListener('click', () => this.playCurrentAudio());
     }
@@ -409,7 +425,6 @@ class VoziGame {
         const palabrasDisponibles = this.nivelActual === 1 ? 
             [...this.palabrasNivel001] : [...this.palabrasNivel002];
         
-        // Seleccionar 3 palabras aleatorias únicas (igual que Colab)
         if (palabrasDisponibles.length >= 3) {
             this.palabrasNivelActual = this.getRandomSample(palabrasDisponibles, 3);
         } else {
@@ -431,14 +446,12 @@ class VoziGame {
             this.indicePalabraActual++;
             return palabra;
         } else {
-            // Si ya se completaron todas las palabras, seleccionar nuevas (igual que Colab)
             this.seleccionarPalabrasNivel();
             return this.palabrasNivelActual[0] || null;
         }
     }
     
     updateGameUI() {
-        // Actualizar elementos de la interfaz
         this.elements.currentLevel.textContent = this.nivelActual;
         this.elements.currentStars.textContent = this.estrellas;
         this.elements.currentWord.textContent = this.palabraActual ? this.palabraActual.toUpperCase() : 'CARGANDO...';
@@ -446,10 +459,7 @@ class VoziGame {
         this.elements.currentProgress.textContent = this.indicePalabraActual;
         this.elements.totalWords.textContent = this.palabrasNivelActual.length;
         
-        // Actualizar puntos de progreso (igual que Colab)
         this.updateProgressDots();
-        
-        // Limpiar mensajes
         this.elements.result.textContent = '';
     }
     
@@ -508,17 +518,19 @@ class VoziGame {
     }
     
     async startRecognition() {
-        // Verificar compatibilidad
+        if (this.reconocimientoActivo) {
+            console.log('⚠️ Reconocimiento ya activo');
+            return;
+        }
+        
         if (!this.isSpeechRecognitionSupported()) {
             this.mostrarErrorCompatibilidad();
             return;
         }
 
-        // Si no tenemos permiso o está en proceso, intentar obtenerlo
         if (!this.microfonoPermitido || this.solicitandoMicrofono) {
             await this.solicitarPermisoMicrofono();
             
-            // Si aún no tenemos permiso, mostrar mensaje
             if (!this.microfonoPermitido) {
                 this.elements.recognitionStatus.innerHTML = `
                     ❌ <strong>Micrófono no disponible</strong><br>
@@ -530,19 +542,21 @@ class VoziGame {
         }
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
+        this.recognition = new SpeechRecognition();
 
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'es-ES';
+        this.recognition.continuous = false;
+        this.recognition.interimResults = false;
+        this.recognition.lang = 'es-ES';
+        this.recognition.maxAlternatives = 1;
 
-        // Estado de escucha
         this.elements.recognitionStatus.innerHTML = '● <strong>ESCUCHANDO...</strong><br><small>Habla ahora claramente</small>';
         this.elements.recognitionStatus.className = 'status-message status-listening';
         this.elements.recognizeBtn.textContent = '🎤 ESCUCHANDO...';
         this.elements.recognizeBtn.disabled = true;
+        this.reconocimientoActivo = true;
 
-        recognition.onresult = (event) => {
+        this.recognition.onresult = (event) => {
+            this.reconocimientoActivo = false;
             const textoReconocido = event.results[0][0].transcript.toLowerCase().trim();
             this.elements.recognitionStatus.innerHTML = `✅ <strong>Reconocido:</strong> ${textoReconocido}`;
             this.elements.recognitionStatus.className = 'status-message status-success';
@@ -550,7 +564,8 @@ class VoziGame {
             this.procesarResultado(textoReconocido);
         };
 
-        recognition.onerror = (event) => {
+        this.recognition.onerror = (event) => {
+            this.reconocimientoActivo = false;
             let mensajeError = '❌ <strong>Error:</strong> ';
             
             if (event.error == 'no-speech') {
@@ -558,12 +573,15 @@ class VoziGame {
             } else if (event.error == 'audio-capture') {
                 mensajeError += 'No se pudo capturar audio. Verifica tu micrófono.';
                 this.microfonoPermitido = false;
+                this.mostrarEstadoMicrofono('no-microfono');
             } else if (event.error == 'not-allowed') {
                 mensajeError += 'Permiso de micrófono denegado. Haz clic en "HABLAR" para intentar nuevamente.';
                 this.microfonoPermitido = false;
                 this.mostrarModalPermisos();
             } else if (event.error == 'network') {
                 mensajeError += 'Error de red. Verifica tu conexión a internet.';
+            } else if (event.error == 'service-not-allowed') {
+                mensajeError += 'Servicio de reconocimiento no disponible.';
             } else {
                 mensajeError += event.error;
             }
@@ -573,15 +591,29 @@ class VoziGame {
             this.resetRecognitionButton();
         };
 
-        recognition.onend = () => {
+        this.recognition.onend = () => {
+            this.reconocimientoActivo = false;
             this.resetRecognitionButton();
         };
 
         try {
-            recognition.start();
+            this.recognition.start();
+            console.log('🎤 Reconocimiento de voz iniciado');
+            
+            setTimeout(() => {
+                if (this.reconocimientoActivo) {
+                    this.recognition.stop();
+                    this.elements.recognitionStatus.innerHTML = '⏱️ <strong>Tiempo agotado</strong><br><small>Intenta de nuevo hablando más claro</small>';
+                    this.elements.recognitionStatus.className = 'status-message status-error';
+                    this.reconocimientoActivo = false;
+                    this.resetRecognitionButton();
+                }
+            }, 10000);
         } catch (error) {
-            this.elements.recognitionStatus.innerHTML = '❌ <strong>Error al iniciar reconocimiento</strong>';
+            console.error('Error al iniciar reconocimiento:', error);
+            this.elements.recognitionStatus.innerHTML = '❌ <strong>Error en el reconocimiento</strong><br><small>Intenta actualizar la página</small>';
             this.elements.recognitionStatus.className = 'status-message status-error';
+            this.reconocimientoActivo = false;
             this.resetRecognitionButton();
         }
     }
@@ -591,14 +623,13 @@ class VoziGame {
         this.elements.recognizeBtn.disabled = false;
     }
     
-    // MÉTODOS IDÉNTICOS AL CÓDIGO COLAB
-    
     detectarConfusionRL(textoReconocido, palabraObjetivo) {
         const texto = textoReconocido.toLowerCase();
         const objetivo = palabraObjetivo.toLowerCase();
 
+        // CORRECCIÓN 1: Bug en la línea original - tenía 'r'.includes(objetivo) que siempre era falso
         // Caso 1: Palabra objetivo tiene R pero niño dijo L
-        if ('r'.includes(objetivo) && texto.includes('l')) {
+        if (objetivo.includes('r') && texto.includes('l')) {
             const textoCorregido = texto.replace(/l/g, 'r');
             if (textoCorregido === objetivo) {
                 return [true, "r_por_l", "Confundiste 'R' con 'L'. Para la R, haz vibrar la lengua"];
@@ -621,11 +652,52 @@ class VoziGame {
             }
         }
 
+        // CORRECCIÓN 2: Detectar errores como "errocarril" en vez de "ferrocarril"
+        // Niño omitió la primera letra
+        if (texto === objetivo.slice(1)) {
+            const letraFaltante = objetivo[0].toUpperCase();
+            return [false, "omitio_letra_inicio", `Te faltó la letra '${letraFaltante}' al inicio. Debe ser: ${objetivo.toUpperCase()}`];
+        }
+        
+        // Niño omitió la última letra
+        if (texto === objetivo.slice(0, -1)) {
+            const letraFaltante = objetivo[objetivo.length - 1].toUpperCase();
+            return [false, "omitio_letra_final", `Te faltó la letra '${letraFaltante}' al final. Debe ser: ${objetivo.toUpperCase()}`];
+        }
+
+        // Para palabras largas como "ferrocarril", verificar letras faltantes
+        if (objetivo.length >= 6 && texto.length >= objetivo.length - 2) {
+            // Verificar si es un caso de letra faltante en medio
+            for (let i = 0; i < objetivo.length; i++) {
+                const sinLetra = objetivo.slice(0, i) + objetivo.slice(i + 1);
+                if (texto === sinLetra) {
+                    const letraFaltante = objetivo[i].toUpperCase();
+                    return [false, "letra_faltante_medio", `Te faltó la letra '${letraFaltante}' en medio. Pronuncia: ${objetivo.toUpperCase()}`];
+                }
+            }
+            
+            // Verificar si es un caso de letra incorrecta
+            if (texto.length === objetivo.length) {
+                let diferencias = 0;
+                let posicionError = -1;
+                
+                for (let i = 0; i < texto.length; i++) {
+                    if (texto[i] !== objetivo[i]) {
+                        diferencias++;
+                        posicionError = i;
+                    }
+                }
+                
+                if (diferencias === 1) {
+                    return [false, "letra_incorrecta", `En la posición ${posicionError + 1}, '${texto[posicionError].toUpperCase()}' debe ser '${objetivo[posicionError].toUpperCase()}'`];
+                }
+            }
+        }
+
         return [false, "", ""];
     }
 
     calcularSimilitud(texto1, texto2) {
-        // Implementación simple de similitud (puedes mejorarla)
         const longer = texto1.length > texto2.length ? texto1 : texto2;
         const shorter = texto1.length > texto2.length ? texto2 : texto1;
         
@@ -664,9 +736,9 @@ class VoziGame {
         const textoLimpio = textoReconocido.toLowerCase().trim();
         const objetivoLimpio = palabraObjetivo.toLowerCase().trim();
 
-        console.log(`🔍 Comparando EXACTO: '${textoLimpio}' con '${objetivoLimpio}'`);
+        console.log(`🔍 Comparando: '${textoLimpio}' con '${objetivoLimpio}'`);
 
-        // SOLO COMPARACIÓN EXACTA (igual que Colab)
+        // CORRECCIÓN 3: SOLO aceptar comparación EXACTA
         if (textoLimpio === objetivoLimpio) {
             return [true, "exacta", ""];
         }
@@ -677,7 +749,25 @@ class VoziGame {
             return [false, tipoConfusion, mensajeConfusion];
         }
 
-        // Calcular similitud para determinar el tipo de feedback
+        // CORRECCIÓN 4: Para palabras largas como "ferrocarril", ser más estricto
+        if (objetivoLimpio.length >= 6) {
+            // Si la diferencia de longitud es mayor a 1, rechazar
+            const diff = Math.abs(textoLimpio.length - objetivoLimpio.length);
+            if (diff > 1) {
+                return [false, "completamente_diferente", `La palabra tiene ${objetivoLimpio.length} letras. Pronuncia todas las letras`];
+            }
+            
+            // Caso específico para "ferrocarril"
+            if (objetivoLimpio === "ferrocarril") {
+                if (textoLimpio === "errocarril") {
+                    return [false, "letra_faltante", "¡Casi! Pero te falta la F al inicio: FERROCARRIL"];
+                }
+                if (textoLimpio === "ferrocarrí" || textoLimpio === "ferocarril" || textoLimpio === "ferrocarrr") {
+                    return [false, "letra_incorrecta", "Muy cerca. La palabra correcta es: FERROCARRIL"];
+                }
+            }
+        }
+
         const similitud = this.calcularSimilitud(textoLimpio, objetivoLimpio);
 
         if (similitud < 0.3) {
@@ -693,17 +783,13 @@ class VoziGame {
         console.log(`🎯 Texto reconocido: '${textoReconocido}'`);
         console.log(`🎯 Palabra objetivo: '${this.palabraActual}'`);
 
-        // Comparar las palabras - SOLO EXACTO (igual que Colab)
         const [esCorrecto, tipoComparacion, mensajeEspecifico] = this.compararPalabras(textoReconocido, this.palabraActual);
 
         if (esCorrecto) {
             this.estrellas++;
             this.oportunidadesRestantes = 3;
 
-            // NUEVO: Crear estrella flotante
             this.crearEstrellaFlotante();
-
-            // Reproducir audio de felicitaciones
             console.log("✅ ¡ACERTASTE EXACTAMENTE!");
             this.reproducirAudioFeedback("felicidades");
 
@@ -711,7 +797,6 @@ class VoziGame {
             this.elements.result.style.background = 'rgba(76, 175, 80, 0.3)';
             this.elements.result.style.color = '#69F0AE';
 
-            // Verificar si pasó al nivel 2 o terminó el juego
             setTimeout(() => {
                 if (this.estrellas >= 3) {
                     if (this.nivelActual === 1) {
@@ -739,15 +824,23 @@ class VoziGame {
         } else {
             this.oportunidadesRestantes--;
 
-            // NUEVO: Crear emoji de lengua cuando pronuncia mal
-            this.crearEmojiLengua();
+            if (tipoComparacion.includes("letra") || tipoComparacion.includes("omitio")) {
+                this.crearEmojiLengua();
+            }
 
-            this.elements.result.textContent = `❌ No es correcto. Dijiste: "${textoReconocido}"`;
+            if (mensajeEspecifico) {
+                this.elements.result.textContent = `❌ ${mensajeEspecifico}`;
+            } else {
+                this.elements.result.textContent = `❌ No es correcto. Dijiste: "${textoReconocido}"`;
+            }
+            
             this.elements.result.style.background = 'rgba(244, 67, 54, 0.3)';
             this.elements.result.style.color = '#FF5252';
 
-            // Determinar qué tipo de feedback reproducir (igual que Colab)
+            // Determinar qué tipo de feedback reproducir
             if (["r_por_l", "rr_por_l", "l_por_r"].includes(tipoComparacion)) {
+                this.reproducirAudioFeedback("corregir");
+            } else if (tipoComparacion.includes("letra") || tipoComparacion.includes("omitio")) {
                 this.reproducirAudioFeedback("corregir");
             } else if (tipoComparacion === "completamente_diferente") {
                 this.reproducirAudioFeedback("corregir");
@@ -789,7 +882,6 @@ class VoziGame {
         const archivosPosibles = mapeoArchivos[tipoFeedback] || [];
         let archivoEncontrado = null;
 
-        // Buscar archivo disponible
         for (const archivo of archivosPosibles) {
             if (this.audiosFeedback.includes(archivo)) {
                 archivoEncontrado = archivo;
@@ -839,19 +931,16 @@ class VoziGame {
     }
 
     restartGame() {
-        // Reiniciar estado del juego
         this.estrellas = 0;
         this.nivelActual = 1;
         this.oportunidadesRestantes = 3;
         this.juegoTerminado = false;
         this.microfonoPermitido = false;
 
-        // Volver a la pantalla de instrucciones
         this.elements.endScreen.classList.add('hidden');
         this.elements.gameScreen.classList.add('hidden');
         this.showInstructions();
         
-        // Re-inicializar reconocimiento de voz
         this.inicializarReconocimientoVoz();
     }
 
@@ -863,7 +952,6 @@ class VoziGame {
     }
 }
 
-// Inicializar la aplicación cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
     window.voziGame = new VoziGame();
 });
